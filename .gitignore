@@ -1,0 +1,14 @@
+# Binaries
+*.exe
+*.dll
+*.so
+
+# Go workspace
+go.work
+
+# Environment files
+.env
+
+# IDE
+.vscode/
+.idea/
