@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,4 +40,44 @@ type CreateJobRequest struct {
 	Priority    int            `json:"priority"`
 	MaxRetries  int            `json:"max_retries"`
 	ScheduledAt *time.Time     `json:"scheduled_at"`
+}
+
+type JobResponse struct {
+	ID           uuid.UUID      `json:"id"`
+	Type         string         `json:"type"`
+	Payload      map[string]any `json:"payload"`
+	Status       JobStatus      `json:"status"`
+	Priority     int            `json:"priority"`
+	MaxRetries   int            `json:"max_retries"`
+	RetryCount   int            `json:"retry_count"`
+	ErrorMessage *string        `json:"error_message"`
+	ScheduledAt  time.Time      `json:"scheduled_at"`
+	StartedAt    *time.Time     `json:"started_at"`
+	CompletedAt  *time.Time     `json:"completed_at"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+}
+
+func (j *Job) ToResponse() (*JobResponse, error) {
+	var payload map[string]any
+
+	if err := json.Unmarshal(j.Payload, &payload); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return &JobResponse{
+		ID:           j.ID,
+		Type:         j.Type,
+		Payload:      payload,
+		Status:       j.Status,
+		Priority:     j.Priority,
+		MaxRetries:   j.MaxRetries,
+		RetryCount:   j.RetryCount,
+		ErrorMessage: j.ErrorMessage,
+		ScheduledAt:  j.ScheduledAt,
+		StartedAt:    j.StartedAt,
+		CompletedAt:  j.CompletedAt,
+		CreatedAt:    j.CreatedAt,
+		UpdatedAt:    j.UpdatedAt,
+	}, nil
 }

@@ -43,7 +43,13 @@ func (h *Handler) CreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, job)
+	resp, err := job.ToResponse()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to format response")
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // GET /jobs/{id}
@@ -61,7 +67,13 @@ func (h *Handler) GetJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, job)
+	resp, err := job.ToResponse()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to format response")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // GET /jobs?status=pending&limit=10&offset=0
