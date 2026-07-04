@@ -12,12 +12,17 @@ import (
 	"github.com/google/uuid"
 
 	db "github.com/TonyJ275/gotaskq/internal/db/mocks"
+	"github.com/TonyJ275/gotaskq/internal/metrics"
 	"github.com/TonyJ275/gotaskq/internal/model"
 )
 
 func newTestHandler() (*Handler, *db.MockJobStore) {
 	mock := db.NewMockJobStore()
-	handler := NewHandler(mock)
+
+	testMetrics := metrics.New()
+
+	handler := NewHandler(mock, testMetrics)
+
 	return handler, mock
 }
 
