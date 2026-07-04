@@ -1,13 +1,16 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func NewRouter(h *Handler, pool *pgxpool.Pool) http.Handler {
+type Pinger interface {
+	Ping(ctx context.Context) error
+}
+
+func NewRouter(h *Handler, pool Pinger) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

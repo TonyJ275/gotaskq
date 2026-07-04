@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 type JobRepository struct {
 	pool *pgxpool.Pool
 }
+
+// Verifies that *JobRepository implements JobStore.
+var _ JobStore = (*JobRepository)(nil)
 
 func NewJobRepository(pool *pgxpool.Pool) *JobRepository {
 	return &JobRepository{pool: pool}
@@ -95,7 +99,7 @@ func (r *JobRepository) GetJob(ctx context.Context, id uuid.UUID) (*model.Job, e
 
 	if err != nil {
 		// handle "not found" case explicitly
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("job not found")
 		}
 
