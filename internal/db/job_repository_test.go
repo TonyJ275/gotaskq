@@ -3,13 +3,10 @@ package db
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/TonyJ275/gotaskq/internal/model"
 )
@@ -18,16 +15,13 @@ import (
 func setupTestDB(t *testing.T) (*JobRepository, *pgxpool.Pool, func()) {
 	ctx := context.Background()
 
-	pgContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("postgres:15-alpine"),
+	// 1. Use the new postgres.Run() API
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:15-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(10*time.Second),
-		),
+		postgres.BasicWaitStrategies(),
 	)
 	if err != nil {
 		t.Fatalf("failed to start postgres container: %v", err)
@@ -44,23 +38,23 @@ func setupTestDB(t *testing.T) (*JobRepository, *pgxpool.Pool, func()) {
 	}
 
 	_, err = pool.Exec(ctx, `
-		CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-		CREATE TABLE jobs (
-			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			type VARCHAR(255) NOT NULL,
-			payload JSONB NOT NULL,
-			status VARCHAR(50) DEFAULT 'pending',
-			priority INT DEFAULT 0,
-			max_retries INT DEFAULT 3,
-			retry_count INT DEFAULT 0,
-			error_message TEXT,
-			scheduled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-			started_at TIMESTAMP WITH TIME ZONE,
-			completed_at TIMESTAMP WITH TIME ZONE,
-			created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-			updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-		);
-	`)
+        CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+        CREATE TABLE jobs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            type VARCHAR(255) NOT NULL,
+            payload JSONB NOT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            priority INT DEFAULT 0,
+            max_retries INT DEFAULT 3,
+            retry_count INT DEFAULT 0,
+            error_message TEXT,
+            scheduled_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            started_at TIMESTAMP WITH TIME ZONE,
+            completed_at TIMESTAMP WITH TIME ZONE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+    `)
 	if err != nil {
 		t.Fatalf("failed to create schema: %v", err)
 	}
