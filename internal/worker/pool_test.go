@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 
+	"github.com/TonyJ275/gotaskq/internal/metrics"
 	"github.com/TonyJ275/gotaskq/internal/model"
 )
 
@@ -88,7 +89,8 @@ func TestWorkerPool_PollJob(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	wp := NewWorkerPool(pool, 1)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 1, testMetrics)
 
 	// Insert a job
 	insertTestJob(ctx, pool, "test_job")
@@ -111,7 +113,8 @@ func TestWorkerPool_ProcessJob_Success(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	wp := NewWorkerPool(pool, 1)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 1, testMetrics)
 
 	// Register a handler that always succeeds
 	wp.RegisterHandler("success_job", func(ctx context.Context, payload []byte) error {
@@ -140,7 +143,8 @@ func TestWorkerPool_ProcessJob_MissingHandler(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	wp := NewWorkerPool(pool, 1)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 1, testMetrics)
 	// Notice we DO NOT register a handler here
 
 	id := insertTestJob(ctx, pool, "missing_handler_job")
@@ -164,7 +168,8 @@ func TestWorkerPool_ProcessJob_RetryLogic(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	wp := NewWorkerPool(pool, 1)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 1, testMetrics)
 
 	// Register a handler that always fails
 	wp.RegisterHandler("fail_job", func(ctx context.Context, payload []byte) error {
@@ -216,7 +221,8 @@ func TestWorkerPool_DatabaseErrors(t *testing.T) {
 	pool, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	wp := NewWorkerPool(pool, 1)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 1, testMetrics)
 
 	// Create a context and cancel it immediately
 	ctx, cancel := context.WithCancel(context.Background())
@@ -250,7 +256,8 @@ func TestWorkerPool_StartAndShutdown(t *testing.T) {
 	defer cleanup()
 
 	// Spin up a pool with 2 workers
-	wp := NewWorkerPool(pool, 2)
+	testMetrics := metrics.New()
+	wp := NewWorkerPool(pool, 2, testMetrics)
 
 	// Use a quick timeout context (100ms) to let the workers start up,
 	// run a loop iteration, and then trigger a graceful shutdown.

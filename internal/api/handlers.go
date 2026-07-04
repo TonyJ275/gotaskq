@@ -8,15 +8,20 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/TonyJ275/gotaskq/internal/db"
+	"github.com/TonyJ275/gotaskq/internal/metrics"
 	"github.com/TonyJ275/gotaskq/internal/model"
 )
 
 type Handler struct {
 	jobRepo db.JobStore
+	metrics *metrics.Metrics
 }
 
-func NewHandler(jobRepo db.JobStore) *Handler {
-	return &Handler{jobRepo: jobRepo}
+func NewHandler(jobRepo db.JobStore, m *metrics.Metrics) *Handler {
+	return &Handler{
+		jobRepo: jobRepo,
+		metrics: m,
+	}
 }
 
 // POST /jobs
@@ -42,6 +47,9 @@ func (h *Handler) CreateJob(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "failed to create job")
 		return
 	}
+
+	// Track enqueued metric
+	h.metrics.JobsEnqueued.Inc()
 
 	resp, err := job.ToResponse()
 	if err != nil {

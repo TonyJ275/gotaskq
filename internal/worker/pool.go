@@ -11,7 +11,9 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/TonyJ275/gotaskq/internal/metrics"
 	"github.com/TonyJ275/gotaskq/internal/model"
 )
 
@@ -24,14 +26,16 @@ type WorkerPool struct {
 	concurrency int
 	handlers    map[string]JobHandler
 	wg          sync.WaitGroup
+	metrics     *metrics.Metrics
 }
 
 // NewWorkerPool creates a new worker pool
-func NewWorkerPool(pool *pgxpool.Pool, concurrency int) *WorkerPool {
+func NewWorkerPool(pool *pgxpool.Pool, concurrency int, m *metrics.Metrics) *WorkerPool {
 	return &WorkerPool{
 		pool:        pool,
 		concurrency: concurrency,
 		handlers:    make(map[string]JobHandler),
+		metrics:     m,
 	}
 }
 
@@ -158,10 +162,19 @@ func (wp *WorkerPool) pollJob(ctx context.Context) (*model.Job, error) {
 
 // processJob executes a job and handles success/failure
 func (wp *WorkerPool) processJob(ctx context.Context, job *model.Job) {
+	// Track active workers
+	wp.metrics.ActiveWorkers.Inc()
+	defer wp.metrics.ActiveWorkers.Dec()
+
+	// Track job duration
+	timer := prometheus.NewTimer(wp.metrics.JobDuration)
+	defer timer.ObserveDuration()
+
 	handler, exists := wp.handlers[job.Type]
 	if !exists {
 		errMsg := fmt.Sprintf("no handler registered for job type: %s", job.Type)
 		log.Printf("Job %s failed: %s", job.ID, errMsg)
+		wp.metrics.JobsFailed.Inc()
 		wp.markFailed(ctx, job, errMsg)
 		return
 	}
@@ -171,10 +184,12 @@ func (wp *WorkerPool) processJob(ctx context.Context, job *model.Job) {
 	if err != nil {
 		log.Printf("Job %s failed (attempt %d/%d): %v",
 			job.ID, job.RetryCount+1, job.MaxRetries, err)
+		wp.metrics.JobsFailed.Inc()
 
 		if job.RetryCount >= job.MaxRetries {
 			// No more retries - move to dead letter queue
 			log.Printf("Job %s exceeded max retries, moving to dead", job.ID)
+			wp.metrics.JobsDead.Inc()
 			wp.markDead(ctx, job, err.Error())
 		} else {
 			// Schedule retry with exponential backoff
@@ -187,6 +202,7 @@ func (wp *WorkerPool) processJob(ctx context.Context, job *model.Job) {
 
 	// Success
 	log.Printf("Job %s completed successfully", job.ID)
+	wp.metrics.JobsCompleted.Inc()
 	wp.markCompleted(ctx, job)
 }
 
