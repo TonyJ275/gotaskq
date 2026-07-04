@@ -12,10 +12,10 @@ import (
 )
 
 type Handler struct {
-	jobRepo *db.JobRepository
+	jobRepo db.JobStore
 }
 
-func NewHandler(jobRepo *db.JobRepository) *Handler {
+func NewHandler(jobRepo db.JobStore) *Handler {
 	return &Handler{jobRepo: jobRepo}
 }
 
