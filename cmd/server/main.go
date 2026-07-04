@@ -10,6 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/TonyJ275/gotaskq/internal/api"
@@ -35,6 +38,11 @@ func main() {
 	defer pool.Close()
 
 	fmt.Println("Successfully connected to database")
+
+	// Run migrations automatically on startup
+	if err := runMigrations(connString); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 
 	// Initialize metrics
 	m := metrics.New()
@@ -74,7 +82,7 @@ func main() {
 	router := api.NewRouter(handler, pool)
 
 	// Add metrics endpoint to router
-	router.(*http.ServeMux).Handle("/metrics", promhttp.Handler())
+	router.Handle("/metrics", promhttp.Handler())
 
 	fmt.Println("Server starting on :8080")
 
@@ -86,4 +94,22 @@ func main() {
 
 	<-ctx.Done()
 	fmt.Println("Shutting down gracefully...")
+}
+
+func runMigrations(databaseURL string) error {
+	m, err := migrate.New(
+		"file://migrations",
+		databaseURL,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create migrator: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	fmt.Println("Migrations applied successfully")
+	return nil
 }

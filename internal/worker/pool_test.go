@@ -19,7 +19,7 @@ func setupTestDB(t *testing.T) (*pgxpool.Pool, func()) {
 
 	// Updated to use the modern postgres.Run API
 	pgContainer, err := postgres.Run(ctx,
-		"postgres:15-alpine",
+		"postgres:17-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("password"),
