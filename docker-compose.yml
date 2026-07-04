@@ -1,4 +1,16 @@
 services:
+  app:
+    build: .
+    container_name: gotaskq-app
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://gotaskq_user:gotaskq_pass@postgres:5432/gotaskq?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:17
     container_name: gotaskq-postgres
@@ -16,6 +28,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: gotaskq-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - app
+    restart: unless-stopped
 
 volumes:
   postgres_data:

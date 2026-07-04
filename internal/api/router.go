@@ -10,7 +10,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(h *Handler, pool Pinger) http.Handler {
+func NewRouter(h *Handler, pool Pinger) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
